@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED
 import org.springframework.web.reactive.function.BodyInserters
+import org.springframework.web.reactive.function.BodyInserters.fromFormData
 import uk.gov.justice.digital.hmpps.authorizationserver.data.repository.ClientRepository
 import uk.gov.justice.digital.hmpps.authorizationserver.service.RegisteredClientAdditionalInformation
 import java.util.Base64
@@ -23,11 +25,13 @@ class OidcIntTest : IntegrationTestBase() {
     @Test
     fun `should register client using given client id`() {
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header(
           HttpHeaders.AUTHORIZATION,
           "Basic " + Base64.getEncoder().encodeToString(("test-client-create-id:test-secret").toByteArray()),
         )
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(fromFormData("grant_type", "client_credentials"))
         .exchange()
         .expectStatus().isOk
         .expectBody()

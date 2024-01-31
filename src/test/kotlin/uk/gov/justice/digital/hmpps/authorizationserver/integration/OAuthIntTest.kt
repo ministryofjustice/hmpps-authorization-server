@@ -10,7 +10,10 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.verify
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.http.HttpHeaders
-import java.util.Base64
+import org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED
+import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.reactive.function.BodyInserters.fromFormData
+import java.util.*
 
 class OAuthIntTest : IntegrationTestBase() {
 
@@ -23,8 +26,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `client with database username`() {
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("test-client-id:test-secret").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isOk
         .expectBody()
@@ -47,8 +54,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `client without database username`() {
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("ip-allow-a-client-1:test-secret").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isOk
         .expectBody()
@@ -69,11 +80,18 @@ class OAuthIntTest : IntegrationTestBase() {
 
     @Test
     fun `user name passed in`() {
+      val map = LinkedMultiValueMap<String, String>()
+      map.add("grant_type", "client_credentials")
+      map.add("username", "testy")
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials&username=testy")
+        .post().uri("/oauth2/token")
         .header(
           HttpHeaders.AUTHORIZATION,
           "Basic " + Base64.getEncoder().encodeToString(("test-client-id:test-secret").toByteArray()),
+        )
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData(map),
         )
         .exchange()
         .expectStatus().isOk
@@ -93,11 +111,18 @@ class OAuthIntTest : IntegrationTestBase() {
 
     @Test
     fun `auth source passed in`() {
+      val map = LinkedMultiValueMap<String, String>()
+      map.add("grant_type", "client_credentials")
+      map.add("auth_source", "delius")
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials&auth_source=delius")
+        .post().uri("/oauth2/token")
         .header(
           HttpHeaders.AUTHORIZATION,
           "Basic " + Base64.getEncoder().encodeToString(("test-client-create-id:test-secret").toByteArray()),
+        )
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData(map),
         )
         .exchange()
         .expectStatus().isOk
@@ -117,11 +142,18 @@ class OAuthIntTest : IntegrationTestBase() {
 
     @Test
     fun `unrecognised auth source passed in`() {
+      val map = LinkedMultiValueMap<String, String>()
+      map.add("grant_type", "client_credentials")
+      map.add("auth_source", "xdelius")
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials&auth_source=xdelius")
+        .post().uri("/oauth2/token")
         .header(
           HttpHeaders.AUTHORIZATION,
           "Basic " + Base64.getEncoder().encodeToString(("test-client-create-id:test-secret").toByteArray()),
+        )
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData(map),
         )
         .exchange()
         .expectStatus().isOk
@@ -142,8 +174,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `incorrect secret`() {
       webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header(HttpHeaders.AUTHORIZATION, "Basic " + Base64.getEncoder().encodeToString(("test-client-id:test-secretx").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isUnauthorized
 
@@ -157,8 +193,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `unrecognised client id`() {
       webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("unrecognised-client-id:test-secret").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isUnauthorized
 
@@ -172,7 +212,11 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `anonymous token request`() {
       webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isUnauthorized
     }

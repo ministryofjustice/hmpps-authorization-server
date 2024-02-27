@@ -16,6 +16,9 @@ import org.mockito.kotlin.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED
+import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.reactive.function.BodyInserters.fromFormData
 import uk.gov.justice.digital.hmpps.authorizationserver.service.AuthSource
 import uk.gov.justice.digital.hmpps.authorizationserver.service.JWKKeyAccessor
 import java.time.Duration
@@ -36,8 +39,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `client with database username`() {
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("test-client-id:test-secret").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isOk
         .expectBody()
@@ -60,8 +67,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `client without database username`() {
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("ip-allow-a-client-1:test-secret").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isOk
         .expectBody()
@@ -82,11 +93,18 @@ class OAuthIntTest : IntegrationTestBase() {
 
     @Test
     fun `user name passed in`() {
+      val map = LinkedMultiValueMap<String, String>()
+      map.add("grant_type", "client_credentials")
+      map.add("username", "testy")
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials&username=testy")
+        .post().uri("/oauth2/token")
         .header(
           HttpHeaders.AUTHORIZATION,
           "Basic " + Base64.getEncoder().encodeToString(("test-client-id:test-secret").toByteArray()),
+        )
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData(map),
         )
         .exchange()
         .expectStatus().isOk
@@ -106,11 +124,18 @@ class OAuthIntTest : IntegrationTestBase() {
 
     @Test
     fun `auth source passed in`() {
+      val map = LinkedMultiValueMap<String, String>()
+      map.add("grant_type", "client_credentials")
+      map.add("auth_source", "delius")
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials&auth_source=delius")
+        .post().uri("/oauth2/token")
         .header(
           HttpHeaders.AUTHORIZATION,
           "Basic " + Base64.getEncoder().encodeToString(("test-client-create-id:test-secret").toByteArray()),
+        )
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData(map),
         )
         .exchange()
         .expectStatus().isOk
@@ -130,11 +155,18 @@ class OAuthIntTest : IntegrationTestBase() {
 
     @Test
     fun `unrecognised auth source passed in`() {
+      val map = LinkedMultiValueMap<String, String>()
+      map.add("grant_type", "client_credentials")
+      map.add("auth_source", "xdelius")
       val clientCredentialsResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials&auth_source=xdelius")
+        .post().uri("/oauth2/token")
         .header(
           HttpHeaders.AUTHORIZATION,
           "Basic " + Base64.getEncoder().encodeToString(("test-client-create-id:test-secret").toByteArray()),
+        )
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData(map),
         )
         .exchange()
         .expectStatus().isOk
@@ -155,8 +187,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `incorrect secret`() {
       webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header(HttpHeaders.AUTHORIZATION, "Basic " + Base64.getEncoder().encodeToString(("test-client-id:test-secretx").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isUnauthorized
 
@@ -170,8 +206,12 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `unrecognised client id`() {
       webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("unrecognised-client-id:test-secret").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isUnauthorized
 
@@ -185,7 +225,11 @@ class OAuthIntTest : IntegrationTestBase() {
     @Test
     fun `anonymous token request`() {
       webTestClient
-        .post().uri("/oauth2/token?grant_type=client_credentials")
+        .post().uri("/oauth2/token")
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .body(
+          fromFormData("grant_type", "client_credentials"),
+        )
         .exchange()
         .expectStatus().isUnauthorized
     }
@@ -259,9 +303,20 @@ class OAuthIntTest : IntegrationTestBase() {
       val authorisationCode =
         header!!.substringAfter("?").split("&").first { it.startsWith("code=") }.substringAfter("code=")
 
+      val formData = LinkedMultiValueMap<String, String>().apply {
+        add("grant_type", "authorization_code")
+        add("code", authorisationCode)
+        add("state", state)
+        add("redirect_uri", validRedirectUri)
+      }
+
       val tokenResponse = webTestClient
-        .post().uri("/oauth2/token?grant_type=authorization_code&code=$authorisationCode&state=$state&redirect_uri=$validRedirectUri")
+        .post().uri("/oauth2/token")
         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString(("$validClientId:test-secret").toByteArray()))
+        .contentType(APPLICATION_FORM_URLENCODED)
+        .bodyValue(
+          formData,
+        )
         .exchange()
         .expectStatus().isOk
         .expectBody()
